@@ -1,136 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>AthleticLog</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AthleticLog</title>
 <style>
-body {
-  font-family: -apple-system, Arial;
-  background: #0f0f0f;
-  color: white;
-  padding: 15px;
-}
-button {
-  display:block;
-  width:100%;
-  margin:8px 0;
-  padding:12px;
-  font-size:16px;
-  border-radius:10px;
-  border:none;
-  background:#1f7aff;
-  color:white;
-}
-.card {
-  background:#1c1c1c;
-  padding:12px;
-  margin:10px 0;
-  border-radius:10px;
-}
-input {
-  width:45%;
-  padding:8px;
-  margin-top:6px;
-}
-.small { color:#aaa; font-size:12px; }
+body{font-family:-apple-system,BlinkMacSystemFont;background:#0f0f0f;color:white;margin:0;padding:20px}
+h1{text-align:center}
+button{width:100%;padding:15px;margin:8px 0;font-size:18px;border:none;border-radius:12px}
+.start{background:#28a745;color:white}
+.history{background:#444;color:white}
+.log{background:#007bff;color:white;margin-top:5px}
+.card{background:#1c1c1c;padding:15px;margin:10px 0;border-radius:12px}
+input{width:48%;padding:10px;margin-top:5px;border-radius:8px;border:none}
+.set-row{display:flex;gap:4%}
 </style>
 </head>
 <body>
-
-<h1>🏋️ AthleticLog</h1>
-
-<div id="menu">
-<button onclick="startWorkout()">Start Workout</button>
-<button onclick="showHistory()">History</button>
-<button onclick="clearData()">Reset App</button>
-</div>
-
-<div id="content"></div>
-
+<h1>AthleticLog</h1>
+<button class="start" onclick="startWorkout()">Start Workout</button>
+<button class="history" onclick="showHistory()">View History</button>
+<div id="app"></div>
 <script>
-const exercises = [
-"Bench Press","Deadlift","Bulgarian Split Squat","Pull-ups",
-"Kettlebell Swings","Overhead Press","Lat Pulldown",
-"Barbell Row","Plank","Box Jumps","Front Squat","Incline DB Press"
-];
-
-let today = [];
-
-function startWorkout() {
-  today = shuffle(exercises).slice(0,5);
-  let html = "<h2>Today's Workout</h2>";
-  today.forEach((ex,i)=>{
-    html += `
-    <div class="card">
-      <b>${ex}</b><br>
-      <input id="w${i}" placeholder="Weight">
-      <input id="r${i}" placeholder="Reps">
-      <button onclick="logSet(${i})">Log Set</button>
-    </div>`;
-  });
-  document.getElementById("content").innerHTML = html;
-}
-
-function logSet(i) {
-  let weight = document.getElementById("w"+i).value;
-  let reps = document.getElementById("r"+i).value;
-  if(!weight || !reps) {
-    alert("Enter weight and reps");
-    return;
-  }
-
-  let log = JSON.parse(localStorage.getItem("log")||"[]");
-  log.push({
-    date:new Date().toLocaleDateString(),
-    exercise:today[i],
-    weight:weight,
-    reps:reps
-  });
-  localStorage.setItem("log",JSON.stringify(log));
-
-  document.getElementById("w"+i).value="";
-  document.getElementById("r"+i).value="";
-
-  showMessage("Set saved for " + today[i]);
-}
-
-function showHistory() {
-  let log = JSON.parse(localStorage.getItem("log")||"[]");
-  if(log.length===0) {
-    document.getElementById("content").innerHTML="<p>No history yet.</p>";
-    return;
-  }
-
-  let html="<h2>History</h2>";
-  log.slice().reverse().forEach(l=>{
-    html += `
-    <div class="card">
-      ${l.date}<br>
-      <b>${l.exercise}</b><br>
-      ${l.weight} × ${l.reps}
-    </div>`;
-  });
-  document.getElementById("content").innerHTML=html;
-}
-
-function clearData() {
-  localStorage.clear();
-  document.getElementById("content").innerHTML="";
-  alert("App reset");
-}
-
-function showMessage(msg) {
-  let div=document.createElement("div");
-  div.className="card";
-  div.innerText=msg;
-  document.getElementById("content").prepend(div);
-}
-
-function shuffle(a) {
-  return [...a].sort(()=>Math.random()-0.5);
-}
+const exercises=["Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges","Leg Press","Hack Squat","Romanian Deadlift","Deadlift","Sumo Deadlift","Trap Bar Deadlift","Hip Thrust","Glute Bridge","Step Ups","Nordic Curl","Bench Press","Incline Bench Press","Decline Bench Press","Push Up","Weighted Push Up","Dips","Chest Fly","Cable Fly","Pec Deck","Landmine Press","Overhead Press","Seated Dumbbell Press","Arnold Press","Push Press","Handstand Push Up","Lateral Raise","Front Raise","Rear Delt Fly","Face Pull","Upright Row","Pull Up","Chin Up","Lat Pulldown","Close Grip Pulldown","Straight Arm Pulldown","Barbell Row","Dumbbell Row","Pendlay Row","Cable Row","T-Bar Row","Shrugs","Farmer Carry","Suitcase Carry","Kettlebell Swing","Power Clean","Hang Clean","Snatch","High Pull","Box Jump","Broad Jump","Plank","Side Plank","Russian Twist","Hanging Leg Raise","Toes to Bar","Ab Wheel","Sit Up","V Up","Mountain Climbers","Dead Bug","Battle Ropes","Sled Push","Sled Pull","Bike Sprint","Row Sprint","Jump Rope","Agility Ladder","Cone Drills","Sprint","Shuttle Run","Calf Raise","Seated Calf Raise","Tibialis Raise","Reverse Lunge","Curtsy Lunge","Single Leg Deadlift","Good Morning","Jefferson Curl","Cable Kickback","Fire Hydrant","Resistance Band Walk","Clamshell","Hip Airplane","Skater Jump","Depth Jump","Wall Sit","Bear Crawl","Crab Walk","Turkish Get Up","Sandbag Carry"];
+function pickExercises(){const chosen=[];while(chosen.length<6){const pick=exercises[Math.floor(Math.random()*exercises.length)];if(!chosen.includes(pick))chosen.push(pick)}return chosen}
+function startWorkout(){const list=pickExercises();const container=document.getElementById("app");container.innerHTML="";list.forEach(ex=>{const card=document.createElement("div");card.className="card";card.innerHTML=`<h3>${ex}</h3><div class="set-row"><input type="number" placeholder="Weight"><input type="number" placeholder="Reps"></div><button class="log" onclick="logSet('${ex}',this)">Log Set</button>`;container.appendChild(card)})}
+function logSet(exercise,btn){const inputs=btn.parentElement.querySelectorAll("input");const weight=inputs[0].value;const reps=inputs[1].value;if(!weight||!reps){alert("Enter weight and reps");return}const history=JSON.parse(localStorage.getItem("history")||"[]");history.push({exercise,weight,reps,date:new Date().toLocaleString()});localStorage.setItem("history",JSON.stringify(history));btn.innerText="Logged"}
+function showHistory(){const history=JSON.parse(localStorage.getItem("history")||"[]");const container=document.getElementById("app");container.innerHTML="<h2>Workout History</h2>";history.slice().reverse().forEach(log=>{const card=document.createElement("div");card.className="card";card.innerHTML=`<b>${log.exercise}</b><br>${log.weight} kg × ${log.reps}<br><small>${log.date}</small>`;container.appendChild(card)})}
 </script>
-
 </body>
 </html>
