@@ -3,34 +3,87 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AthleticLog</title>
+
 <style>
-body{font-family:-apple-system,BlinkMacSystemFont;background:#0f0f0f;color:white;margin:0;padding:20px}
-h1{text-align:center;margin-top:0}
-button{width:100%;padding:14px;margin:6px 0;font-size:17px;border:none;border-radius:12px}
-.start{background:#28a745}
-.finish{background:#dc3545}
-.history{background:#444}
-.log{background:#007bff}
-.card{background:#1c1c1c;padding:14px;margin:10px 0;border-radius:12px}
-.set{font-size:14px;opacity:.9}
-input{width:48%;padding:8px;border-radius:8px;border:none}
-.row{display:flex;gap:4%;margin-top:6px}
+body{
+    font-family:-apple-system,BlinkMacSystemFont;
+    background:#0b0b0b;
+    color:#f1f1f1;
+    margin:0;
+    padding:18px;
+}
+
+h1{
+    text-align:center;
+    margin:0 0 15px 0;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    margin:6px 0;
+    font-size:18px;
+    border:none;
+    border-radius:14px;
+}
+
+.start{background:#2ecc71}
+.finish{background:#e74c3c}
+.history{background:#3498db}
+.log{background:#8e44ad}
+.swap{background:#f1c40f;color:black}
+
+.card{
+    background:#161616;
+    padding:16px;
+    margin:12px 0;
+    border-radius:16px;
+    box-shadow:0 0 8px rgba(0,0,0,.4);
+}
+
+.set{
+    font-size:14px;
+    opacity:.85;
+}
+
+.row{
+    display:flex;
+    gap:4%;
+    margin-top:8px;
+}
+
+input{
+    width:48%;
+    padding:10px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+}
 </style>
 </head>
+
 <body>
 
-<h1>AthleticLog</h1>
+<h1>🏋️ AthleticLog</h1>
 
-<button class="start" onclick="startWorkout()">Start Workout</button>
-<button class="finish" onclick="finishWorkout()">Finish Workout</button>
-<button class="history" onclick="showHistory()">History</button>
+<button class="start" onclick="startWorkout()">🚀 Start Workout</button>
+<button class="finish" onclick="finishWorkout()">🏁 Finish Workout</button>
+<button class="history" onclick="showHistory()">📜 History</button>
 
 <div id="app"></div>
 
 <script>
-const exercises=["Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges","Leg Press","Hack Squat","Romanian Deadlift","Deadlift","Sumo Deadlift","Trap Bar Deadlift","Bench Press","Incline Bench Press","Push Up","Dips","Overhead Press","Lateral Raise","Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row","Face Pull","Shrugs","Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise","Battle Ropes","Sled Push","Sprint","Calf Raise","Single Leg Deadlift","Good Morning","Cable Kickback","Clamshell","Turkish Get Up"];
+const exercises=[
+"Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges",
+"Leg Press","Hack Squat","Romanian Deadlift","Deadlift","Sumo Deadlift","Trap Bar Deadlift",
+"Bench Press","Incline Bench Press","Push Up","Dips","Overhead Press","Lateral Raise",
+"Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row","Face Pull","Shrugs",
+"Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise",
+"Battle Ropes","Sled Push","Sprint","Calf Raise","Single Leg Deadlift","Good Morning",
+"Cable Kickback","Clamshell","Turkish Get Up"
+];
 
-let currentWorkout = [];
+let currentWorkout=[];
 
 function pickExercises(){
     const chosen=[];
@@ -53,17 +106,30 @@ function renderWorkout(){
         const card=document.createElement("div");
         card.className="card";
         card.innerHTML=`
-            <h3>${item.exercise}</h3>
+            <h3>💪 <span id="name-${i}">${item.exercise}</span></h3>
+            <button class="swap" onclick="swapExercise(${i})">🔁 Swap Exercise</button>
+
             <div id="sets-${i}"></div>
+
             <div class="row">
-                <input type="number" placeholder="Weight" id="w-${i}">
+                <input type="number" placeholder="Weight (kg)" id="w-${i}">
                 <input type="number" placeholder="Reps" id="r-${i}">
             </div>
-            <button class="log" onclick="addSet(${i})">Add Set</button>
+
+            <button class="log" onclick="addSet(${i})">➕ Add Set</button>
         `;
         app.appendChild(card);
         updateSets(i);
     });
+}
+
+function swapExercise(i){
+    let newEx;
+    do{
+        newEx=exercises[Math.floor(Math.random()*exercises.length)];
+    }while(currentWorkout.some(e=>e.exercise===newEx));
+    currentWorkout[i].exercise=newEx;
+    document.getElementById(`name-${i}`).innerText=newEx;
 }
 
 function addSet(i){
@@ -79,7 +145,9 @@ function addSet(i){
 function updateSets(i){
     const div=document.getElementById(`sets-${i}`);
     if(!div) return;
-    div.innerHTML=currentWorkout[i].sets.map(s=>`<div class="set">${s.w}kg × ${s.r}</div>`).join("");
+    div.innerHTML=currentWorkout[i].sets
+        .map(s=>`<div class="set">🏋️ ${s.w}kg × ${s.r}</div>`)
+        .join("");
 }
 
 function finishWorkout(){
@@ -91,19 +159,19 @@ function finishWorkout(){
     });
     localStorage.setItem("history",JSON.stringify(history));
     currentWorkout=[];
-    document.getElementById("app").innerHTML="<h2>Workout Saved</h2>";
+    document.getElementById("app").innerHTML="<h2>✅ Workout Saved</h2>";
 }
 
 function showHistory(){
     const history=JSON.parse(localStorage.getItem("history")||"[]");
     const app=document.getElementById("app");
-    app.innerHTML="<h2>Past Workouts</h2>";
+    app.innerHTML="<h2>📜 Past Workouts</h2>";
     history.slice().reverse().forEach(w=>{
         const card=document.createElement("div");
         card.className="card";
-        card.innerHTML=`<b>${w.date}</b>`;
+        card.innerHTML=`<b>🗓 ${w.date}</b>`;
         w.workout.forEach(ex=>{
-            card.innerHTML+=`<div class="set">${ex.exercise}: ${ex.sets.map(s=>s.w+"kg×"+s.r).join(", ")}</div>`;
+            card.innerHTML+=`<div class="set">💪 ${ex.exercise}: ${ex.sets.map(s=>s.w+"kg×"+s.r).join(", ")}</div>`;
         });
         app.appendChild(card);
     });
