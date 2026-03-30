@@ -5,27 +5,110 @@
 <title>AthleticLog</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont;background:#0f0f0f;color:white;margin:0;padding:20px}
-h1{text-align:center}
-button{width:100%;padding:15px;margin:8px 0;font-size:18px;border:none;border-radius:12px}
-.start{background:#28a745;color:white}
-.history{background:#444;color:white}
-.log{background:#007bff;color:white;margin-top:5px}
-.card{background:#1c1c1c;padding:15px;margin:10px 0;border-radius:12px}
-input{width:48%;padding:10px;margin-top:5px;border-radius:8px;border:none}
-.set-row{display:flex;gap:4%}
+h1{text-align:center;margin-top:0}
+button{width:100%;padding:14px;margin:6px 0;font-size:17px;border:none;border-radius:12px}
+.start{background:#28a745}
+.finish{background:#dc3545}
+.history{background:#444}
+.log{background:#007bff}
+.card{background:#1c1c1c;padding:14px;margin:10px 0;border-radius:12px}
+.set{font-size:14px;opacity:.9}
+input{width:48%;padding:8px;border-radius:8px;border:none}
+.row{display:flex;gap:4%;margin-top:6px}
 </style>
 </head>
 <body>
+
 <h1>AthleticLog</h1>
+
 <button class="start" onclick="startWorkout()">Start Workout</button>
-<button class="history" onclick="showHistory()">View History</button>
+<button class="finish" onclick="finishWorkout()">Finish Workout</button>
+<button class="history" onclick="showHistory()">History</button>
+
 <div id="app"></div>
+
 <script>
-const exercises=["Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges","Leg Press","Hack Squat","Romanian Deadlift","Deadlift","Sumo Deadlift","Trap Bar Deadlift","Hip Thrust","Glute Bridge","Step Ups","Nordic Curl","Bench Press","Incline Bench Press","Decline Bench Press","Push Up","Weighted Push Up","Dips","Chest Fly","Cable Fly","Pec Deck","Landmine Press","Overhead Press","Seated Dumbbell Press","Arnold Press","Push Press","Handstand Push Up","Lateral Raise","Front Raise","Rear Delt Fly","Face Pull","Upright Row","Pull Up","Chin Up","Lat Pulldown","Close Grip Pulldown","Straight Arm Pulldown","Barbell Row","Dumbbell Row","Pendlay Row","Cable Row","T-Bar Row","Shrugs","Farmer Carry","Suitcase Carry","Kettlebell Swing","Power Clean","Hang Clean","Snatch","High Pull","Box Jump","Broad Jump","Plank","Side Plank","Russian Twist","Hanging Leg Raise","Toes to Bar","Ab Wheel","Sit Up","V Up","Mountain Climbers","Dead Bug","Battle Ropes","Sled Push","Sled Pull","Bike Sprint","Row Sprint","Jump Rope","Agility Ladder","Cone Drills","Sprint","Shuttle Run","Calf Raise","Seated Calf Raise","Tibialis Raise","Reverse Lunge","Curtsy Lunge","Single Leg Deadlift","Good Morning","Jefferson Curl","Cable Kickback","Fire Hydrant","Resistance Band Walk","Clamshell","Hip Airplane","Skater Jump","Depth Jump","Wall Sit","Bear Crawl","Crab Walk","Turkish Get Up","Sandbag Carry"];
-function pickExercises(){const chosen=[];while(chosen.length<6){const pick=exercises[Math.floor(Math.random()*exercises.length)];if(!chosen.includes(pick))chosen.push(pick)}return chosen}
-function startWorkout(){const list=pickExercises();const container=document.getElementById("app");container.innerHTML="";list.forEach(ex=>{const card=document.createElement("div");card.className="card";card.innerHTML=`<h3>${ex}</h3><div class="set-row"><input type="number" placeholder="Weight"><input type="number" placeholder="Reps"></div><button class="log" onclick="logSet('${ex}',this)">Log Set</button>`;container.appendChild(card)})}
-function logSet(exercise,btn){const inputs=btn.parentElement.querySelectorAll("input");const weight=inputs[0].value;const reps=inputs[1].value;if(!weight||!reps){alert("Enter weight and reps");return}const history=JSON.parse(localStorage.getItem("history")||"[]");history.push({exercise,weight,reps,date:new Date().toLocaleString()});localStorage.setItem("history",JSON.stringify(history));btn.innerText="Logged"}
-function showHistory(){const history=JSON.parse(localStorage.getItem("history")||"[]");const container=document.getElementById("app");container.innerHTML="<h2>Workout History</h2>";history.slice().reverse().forEach(log=>{const card=document.createElement("div");card.className="card";card.innerHTML=`<b>${log.exercise}</b><br>${log.weight} kg × ${log.reps}<br><small>${log.date}</small>`;container.appendChild(card)})}
+const exercises=["Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges","Leg Press","Hack Squat","Romanian Deadlift","Deadlift","Sumo Deadlift","Trap Bar Deadlift","Bench Press","Incline Bench Press","Push Up","Dips","Overhead Press","Lateral Raise","Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row","Face Pull","Shrugs","Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise","Battle Ropes","Sled Push","Sprint","Calf Raise","Single Leg Deadlift","Good Morning","Cable Kickback","Clamshell","Turkish Get Up"];
+
+let currentWorkout = [];
+
+function pickExercises(){
+    const chosen=[];
+    while(chosen.length<5){
+        const pick=exercises[Math.floor(Math.random()*exercises.length)];
+        if(!chosen.includes(pick)) chosen.push(pick);
+    }
+    return chosen;
+}
+
+function startWorkout(){
+    currentWorkout = pickExercises().map(ex=>({exercise:ex,sets:[]}));
+    renderWorkout();
+}
+
+function renderWorkout(){
+    const app=document.getElementById("app");
+    app.innerHTML="";
+    currentWorkout.forEach((item,i)=>{
+        const card=document.createElement("div");
+        card.className="card";
+        card.innerHTML=`
+            <h3>${item.exercise}</h3>
+            <div id="sets-${i}"></div>
+            <div class="row">
+                <input type="number" placeholder="Weight" id="w-${i}">
+                <input type="number" placeholder="Reps" id="r-${i}">
+            </div>
+            <button class="log" onclick="addSet(${i})">Add Set</button>
+        `;
+        app.appendChild(card);
+        updateSets(i);
+    });
+}
+
+function addSet(i){
+    const w=document.getElementById(`w-${i}`).value;
+    const r=document.getElementById(`r-${i}`).value;
+    if(!w||!r){alert("Enter weight and reps");return;}
+    currentWorkout[i].sets.push({w,r});
+    updateSets(i);
+    document.getElementById(`w-${i}`).value="";
+    document.getElementById(`r-${i}`).value="";
+}
+
+function updateSets(i){
+    const div=document.getElementById(`sets-${i}`);
+    if(!div) return;
+    div.innerHTML=currentWorkout[i].sets.map(s=>`<div class="set">${s.w}kg × ${s.r}</div>`).join("");
+}
+
+function finishWorkout(){
+    if(currentWorkout.length===0) return;
+    const history=JSON.parse(localStorage.getItem("history")||"[]");
+    history.push({
+        date:new Date().toLocaleString(),
+        workout:currentWorkout
+    });
+    localStorage.setItem("history",JSON.stringify(history));
+    currentWorkout=[];
+    document.getElementById("app").innerHTML="<h2>Workout Saved</h2>";
+}
+
+function showHistory(){
+    const history=JSON.parse(localStorage.getItem("history")||"[]");
+    const app=document.getElementById("app");
+    app.innerHTML="<h2>Past Workouts</h2>";
+    history.slice().reverse().forEach(w=>{
+        const card=document.createElement("div");
+        card.className="card";
+        card.innerHTML=`<b>${w.date}</b>`;
+        w.workout.forEach(ex=>{
+            card.innerHTML+=`<div class="set">${ex.exercise}: ${ex.sets.map(s=>s.w+"kg×"+s.r).join(", ")}</div>`;
+        });
+        app.appendChild(card);
+    });
+}
 </script>
+
 </body>
 </html>
