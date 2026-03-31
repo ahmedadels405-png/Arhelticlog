@@ -4,6 +4,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AthleticLog</title>
 
+<link rel="manifest" href="manifest.json">
+
 <style>
 :root{
 --bg:#0b0d11;
@@ -16,7 +18,7 @@
 
 body{
 margin:0;
-font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
+font-family:-apple-system;
 background:var(--bg);
 color:var(--text);
 }
@@ -31,7 +33,7 @@ font-weight:600;
 .tabs{
 display:flex;
 gap:8px;
-padding:0 12px 12px 12px;
+padding:0 12px 12px;
 }
 
 .tab{
@@ -41,7 +43,6 @@ border-radius:14px;
 text-align:center;
 background:#131720;
 color:var(--muted);
-transition:.2s;
 }
 
 .tab.active{
@@ -49,15 +50,7 @@ background:var(--accent);
 color:white;
 }
 
-.container{
-padding:14px;
-animation:fade .3s;
-}
-
-@keyframes fade{
-from{opacity:0;transform:translateY(10px)}
-to{opacity:1;transform:translateY(0)}
-}
+.container{padding:14px;}
 
 .card{
 background:var(--card);
@@ -65,7 +58,6 @@ border:1px solid var(--border);
 padding:16px;
 margin-bottom:14px;
 border-radius:20px;
-backdrop-filter:blur(18px);
 }
 
 button{
@@ -77,32 +69,12 @@ margin-top:8px;
 font-size:15px;
 }
 
-.theme{
-background:#131720;
-color:var(--muted);
-}
+.theme{background:#131720;color:var(--muted);}
+.theme.active{background:var(--accent);color:white;}
 
-.theme.active{
-background:var(--accent);
-color:white;
-font-weight:600;
-}
-
-.start{
-background:var(--accent);
-color:white;
-font-weight:600;
-}
-
-.finish{
-background:#ef4444;
-color:white;
-}
-
-.swap{
-background:#1f2430;
-color:white;
-}
+.start{background:var(--accent);color:white;}
+.finish{background:#ef4444;color:white;}
+.swap{background:#1f2430;color:white;}
 
 .grid{
 display:grid;
@@ -133,6 +105,7 @@ height:100%;
 background:var(--accent);
 width:0%;
 }
+
 .timer{
 font-size:18px;
 margin-top:4px;
@@ -146,14 +119,18 @@ color:#a5b4fc;
 <header>🏋️ AthleticLog</header>
 
 <div class="tabs">
-<div class="tab active" onclick="showTab('schedule',this)">🏋️ Schedule</div>
-<div class="tab" onclick="showTab('history',this)">📜 History</div>
-<div class="tab" onclick="showTab('stats',this)">📊 Stats</div>
+<div class="tab active" onclick="showTab('schedule',this)">Schedule</div>
+<div class="tab" onclick="showTab('history',this)">History</div>
+<div class="tab" onclick="showTab('stats',this)">Stats</div>
 </div>
 
 <div class="container" id="app"></div>
 
 <script>
+if('serviceWorker' in navigator){
+navigator.serviceWorker.register('service-worker.js');
+}
+
 const pools={
 push:["Bench Press","Incline Press","Overhead Press","Dips"],
 pull:["Pull Up","Row","Face Pull"],
@@ -170,34 +147,28 @@ let timerInterval=null;
 function showTab(name,el){
 document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
 el.classList.add('active');
-
 if(name==="schedule") schedule();
 if(name==="history") historyView();
-if(name==="stats") stats();
+if(name==="stats") statsView();
 }
 
 function schedule(){
 const today=new Date().toLocaleDateString(undefined,{weekday:'long'});
-
 document.getElementById("app").innerHTML=`
-<div class="card">
-<h3>${today}</h3>
-<h2>${Array.from(selected).join(" + ").toUpperCase()}</h2>
-</div>
+<div class="card"><h3>${today}</h3><h2>${Array.from(selected).join(" + ")}</h2></div>
 
 <div class="card">
 <div class="grid">
-${btn("push","💪 Push")}
-${btn("pull","🧲 Pull")}
-${btn("legs","🦵 Legs")}
-${btn("core","🎯 Core")}
-${btn("explosive","🔥 Explosive")}
+${btn("push","Push")}
+${btn("pull","Pull")}
+${btn("legs","Legs")}
+${btn("core","Core")}
+${btn("explosive","Explosive")}
 </div>
 <button class="start" onclick="start()">Start Workout</button>
 </div>
 
-<div id="w"></div>
-`;
+<div id="w"></div>`;
 }
 
 function btn(k,l){
@@ -206,8 +177,7 @@ return `<button class="theme ${a}" onclick="toggle('${k}')">${l}</button>`;
 }
 
 function toggle(t){
-if(selected.has(t)) selected.delete(t);
-else selected.add(t);
+selected.has(t)?selected.delete(t):selected.add(t);
 if(selected.size===0) selected.add("push");
 schedule();
 }
@@ -234,50 +204,47 @@ function updateTimer(){
 const diff=Math.floor((Date.now()-startTime)/1000);
 const m=Math.floor(diff/60).toString().padStart(2,'0');
 const s=(diff%60).toString().padStart(2,'0');
-const t=document.getElementById("timer");
-if(t) t.textContent=`⏱ ${m}:${s}`;
+document.getElementById("timer").textContent=`⏱ ${m}:${s}`;
 }
 
 function renderWorkout(){
 const w=document.getElementById("w");
-w.innerHTML=`
-<div class="card">
+w.innerHTML=`<div class="card">
 <div id="timer" class="timer">⏱ 00:00</div>
 <div class="progress"><div id="bar" class="progress-bar"></div></div>
-</div>
-`;
+</div>`;
 
 workout.forEach((e,i)=>{
-w.innerHTML+=`
-<div class="card">
-<h4>🏋️ ${e.name}</h4>
-<button class="swap" onclick="swap(${i})">🔁 Swap</button>
-<input placeholder="Weight">
-<input placeholder="Reps">
+w.innerHTML+=`<div class="card">
+<h4>${e.name}</h4>
+<button class="swap" onclick="swap(${i})">Swap</button>
+<input id="w${i}" placeholder="Weight">
+<input id="r${i}" placeholder="Reps">
 <button onclick="logSet(${i})">Add Set</button>
-</div>
-`;
+</div>`;
 });
 
 w.innerHTML+=`<button class="finish" onclick="finish()">Finish Workout</button>`;
 }
 
-function swap(i){
-const p=pool();
-workout[i].name=p[Math.floor(Math.random()*p.length)];
-renderWorkout();
-}
-
 function logSet(i){
-workout[i].sets.push({});
+const w=document.getElementById(`w${i}`).value;
+const r=document.getElementById(`r${i}`).value;
+if(!w||!r) return;
+workout[i].sets.push({w,r});
 updateProgress();
 }
 
 function updateProgress(){
 const total=workout.length;
 const done=workout.filter(e=>e.sets.length>0).length;
-const percent=(done/total)*100;
-document.getElementById("bar").style.width=percent+"%";
+document.getElementById("bar").style.width=(done/total*100)+"%";
+}
+
+function swap(i){
+const p=pool();
+workout[i].name=p[Math.floor(Math.random()*p.length)];
+renderWorkout();
 }
 
 function finish(){
@@ -302,13 +269,50 @@ html+=`<div class="card">${s.date}<br>${s.themes.join(" + ")}</div>`;
 document.getElementById("app").innerHTML=html;
 }
 
-function stats(){
+function statsView(){
 const h=JSON.parse(localStorage.getItem("history")||"[]");
+const body=JSON.parse(localStorage.getItem("body")||"{}");
+
+let totalSets=0,totalTime=0,themeCount={};
+
+h.forEach(s=>{
+totalTime+=s.duration||0;
+s.workout.forEach(e=>totalSets+=e.sets.length);
+s.themes.forEach(t=>themeCount[t]=(themeCount[t]||0)+1);
+});
+
+let mostTheme=Object.keys(themeCount).sort((a,b)=>themeCount[b]-themeCount[a])[0]||"None";
+
 document.getElementById("app").innerHTML=`
 <div class="card">
-Total workouts: ${h.length}
+<b>Total workouts:</b> ${h.length}<br>
+<b>Total sets:</b> ${totalSets}<br>
+<b>Most trained:</b> ${mostTheme}<br>
+<b>Total time:</b> ${Math.floor(totalTime/60)} min
+</div>
+
+<div class="card">
+<h3>Body Measurements</h3>
+<input id="bw" placeholder="Weight" value="${body.weight||''}">
+<input id="bf" placeholder="Body Fat %" value="${body.fat||''}">
+<input id="ch" placeholder="Chest" value="${body.chest||''}">
+<input id="wa" placeholder="Waist" value="${body.waist||''}">
+<input id="ar" placeholder="Arms" value="${body.arms||''}">
+<button onclick="saveBody()">Save Measurements</button>
 </div>
 `;
+}
+
+function saveBody(){
+const data={
+weight:document.getElementById("bw").value,
+fat:document.getElementById("bf").value,
+chest:document.getElementById("ch").value,
+waist:document.getElementById("wa").value,
+arms:document.getElementById("ar").value
+};
+localStorage.setItem("body",JSON.stringify(data));
+alert("Saved");
 }
 
 schedule();
