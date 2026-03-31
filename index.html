@@ -5,97 +5,138 @@
 <title>AthleticLog</title>
 
 <style>
+:root{
+--bg:#0b0d11;
+--card:rgba(255,255,255,0.05);
+--border:rgba(255,255,255,0.08);
+--accent:linear-gradient(135deg,#60a5fa,#a78bfa);
+--text:#f1f5f9;
+--muted:#94a3b8;
+}
+
 body{
-    margin:0;
-    font-family:-apple-system,BlinkMacSystemFont;
-    background:#0f1115;
-    color:#f2f5f7;
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
+background:var(--bg);
+color:var(--text);
 }
 
 header{
-    padding:16px;
-    text-align:center;
-    font-size:22px;
-    font-weight:600;
+padding:18px;
+text-align:center;
+font-size:22px;
+font-weight:600;
 }
 
 .tabs{
-    display:flex;
-    gap:8px;
-    padding:0 12px 12px 12px;
+display:flex;
+gap:8px;
+padding:0 12px 12px 12px;
 }
 
 .tab{
-    flex:1;
-    padding:10px;
-    border-radius:14px;
-    text-align:center;
-    background:#1a1d24;
-    color:#9aa3ad;
+flex:1;
+padding:10px;
+border-radius:14px;
+text-align:center;
+background:#131720;
+color:var(--muted);
+transition:.2s;
 }
 
 .tab.active{
-    background:linear-gradient(135deg,#4ade80,#22c55e);
-    color:black;
-    font-weight:600;
+background:var(--accent);
+color:white;
 }
 
 .container{
-    padding:12px;
+padding:14px;
+animation:fade .3s;
+}
+
+@keyframes fade{
+from{opacity:0;transform:translateY(10px)}
+to{opacity:1;transform:translateY(0)}
 }
 
 .card{
-    background:#1a1d24;
-    padding:16px;
-    margin-bottom:14px;
-    border-radius:18px;
-    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+background:var(--card);
+border:1px solid var(--border);
+padding:16px;
+margin-bottom:14px;
+border-radius:20px;
+backdrop-filter:blur(18px);
 }
 
 button{
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:14px;
-    margin-top:8px;
-    font-size:16px;
+width:100%;
+padding:12px;
+border:none;
+border-radius:14px;
+margin-top:8px;
+font-size:15px;
+}
+
+.theme{
+background:#131720;
+color:var(--muted);
+}
+
+.theme.active{
+background:var(--accent);
+color:white;
+font-weight:600;
 }
 
 .start{
-    background:linear-gradient(135deg,#60a5fa,#3b82f6);
-    color:white;
+background:var(--accent);
+color:white;
+font-weight:600;
 }
 
 .finish{
-    background:linear-gradient(135deg,#fb7185,#ef4444);
-    color:white;
+background:#ef4444;
+color:white;
 }
 
 .swap{
-    background:#2b2f38;
-    color:white;
-}
-
-.log{
-    background:#22c55e;
-    color:black;
-}
-
-.theme-btn{
-    background:#2b2f38;
-    color:#cbd5e1;
-}
-
-.theme-btn.active{
-    background:linear-gradient(135deg,#a78bfa,#8b5cf6);
-    color:white;
-    box-shadow:0 0 12px rgba(168,139,250,0.7);
+background:#1f2430;
+color:white;
 }
 
 .grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:8px;
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:10px;
+}
+
+input{
+width:100%;
+padding:10px;
+margin-top:6px;
+border-radius:12px;
+border:1px solid var(--border);
+background:#0f131a;
+color:white;
+}
+
+.progress{
+height:8px;
+background:#1f2430;
+border-radius:10px;
+overflow:hidden;
+margin-top:10px;
+}
+
+.progress-bar{
+height:100%;
+background:var(--accent);
+width:0%;
+}
+.timer{
+font-size:18px;
+margin-top:4px;
+color:#a5b4fc;
 }
 </style>
 </head>
@@ -105,164 +146,172 @@ button{
 <header>🏋️ AthleticLog</header>
 
 <div class="tabs">
-    <div class="tab active" onclick="showTab('schedule',this)">🏋️ Schedule</div>
-    <div class="tab" onclick="showTab('history',this)">📜 History</div>
-    <div class="tab" onclick="showTab('stats',this)">📊 Stats</div>
+<div class="tab active" onclick="showTab('schedule',this)">🏋️ Schedule</div>
+<div class="tab" onclick="showTab('history',this)">📜 History</div>
+<div class="tab" onclick="showTab('stats',this)">📊 Stats</div>
 </div>
 
 <div class="container" id="app"></div>
 
 <script>
-const exercises={
-explosive:["Power Clean","Box Jump","Kettlebell Swing","Sprint"],
-push:["Bench Press","Incline Bench Press","Overhead Press","Dips"],
-pull:["Pull Up","Barbell Row","Lat Pulldown","Dumbbell Row"],
-legs:["Back Squat","Front Squat","Bulgarian Split Squat","Romanian Deadlift"],
-core:["Plank","Russian Twist","Hanging Leg Raise"]
+const pools={
+push:["Bench Press","Incline Press","Overhead Press","Dips"],
+pull:["Pull Up","Row","Face Pull"],
+legs:["Squat","Lunge","RDL"],
+core:["Plank","Hanging Raise","Twist"],
+explosive:["Clean","Box Jump","Sprint"]
 };
 
-let selectedThemes=new Set(["push"]);
-let currentWorkout=[];
+let selected=new Set(["push"]);
+let workout=[];
+let startTime=null;
+let timerInterval=null;
 
 function showTab(name,el){
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    el.classList.add('active');
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+el.classList.add('active');
 
-    if(name==="schedule") renderSchedule();
-    if(name==="history") renderHistory();
-    if(name==="stats") renderStats();
+if(name==="schedule") schedule();
+if(name==="history") historyView();
+if(name==="stats") stats();
 }
 
-function renderSchedule(){
-    const today=new Date().toLocaleDateString(undefined,{weekday:'long'});
-    const app=document.getElementById("app");
+function schedule(){
+const today=new Date().toLocaleDateString(undefined,{weekday:'long'});
 
-    app.innerHTML=`
-    <div class="card">
-        <h3>🗓 ${today}</h3>
-        <h2>🔥 ${Array.from(selectedThemes).join(" + ").toUpperCase()}</h2>
-    </div>
+document.getElementById("app").innerHTML=`
+<div class="card">
+<h3>${today}</h3>
+<h2>${Array.from(selected).join(" + ").toUpperCase()}</h2>
+</div>
 
-    <div class="card">
-        <b>Select Training Focus</b>
-        <div class="grid">
-            ${themeButton("explosive","🔥 Explosive")}
-            ${themeButton("push","💪 Push")}
-            ${themeButton("pull","🧲 Pull")}
-            ${themeButton("legs","🦵 Legs")}
-            ${themeButton("core","🎯 Core")}
-        </div>
-        <button class="start" onclick="startWorkout()">🚀 Start Workout</button>
-    </div>
+<div class="card">
+<div class="grid">
+${btn("push","💪 Push")}
+${btn("pull","🧲 Pull")}
+${btn("legs","🦵 Legs")}
+${btn("core","🎯 Core")}
+${btn("explosive","🔥 Explosive")}
+</div>
+<button class="start" onclick="start()">Start Workout</button>
+</div>
 
-    <div id="workout"></div>
-    `;
+<div id="w"></div>
+`;
 }
 
-function themeButton(key,label){
-    const active=selectedThemes.has(key)?"active":"";
-    return `<button class="theme-btn ${active}" onclick="toggleTheme('${key}')">${label}</button>`;
+function btn(k,l){
+const a=selected.has(k)?"active":"";
+return `<button class="theme ${a}" onclick="toggle('${k}')">${l}</button>`;
 }
 
-function toggleTheme(t){
-    if(selectedThemes.has(t)) selectedThemes.delete(t);
-    else selectedThemes.add(t);
-
-    if(selectedThemes.size===0) selectedThemes.add("push");
-
-    renderSchedule();
+function toggle(t){
+if(selected.has(t)) selected.delete(t);
+else selected.add(t);
+if(selected.size===0) selected.add("push");
+schedule();
 }
 
-function combinedPool(){
-    const pool=new Set();
-    selectedThemes.forEach(t=>{
-        exercises[t].forEach(e=>pool.add(e));
-    });
-    return Array.from(pool);
+function pool(){
+let s=new Set();
+selected.forEach(t=>pools[t].forEach(e=>s.add(e)));
+return Array.from(s);
 }
 
-function pickExercises(){
-    const pool=combinedPool();
-    const chosen=[];
-    while(chosen.length<5 && pool.length>0){
-        const ex=pool[Math.floor(Math.random()*pool.length)];
-        if(!chosen.includes(ex)) chosen.push(ex);
-    }
-    return chosen;
+function start(){
+const p=pool();
+workout=[];
+for(let i=0;i<5;i++){
+workout.push({name:p[Math.floor(Math.random()*p.length)],sets:[]});
+}
+startTime=Date.now();
+clearInterval(timerInterval);
+timerInterval=setInterval(updateTimer,1000);
+renderWorkout();
 }
 
-function startWorkout(){
-    currentWorkout=pickExercises().map(e=>({exercise:e,sets:[]}));
-    renderWorkout();
+function updateTimer(){
+const diff=Math.floor((Date.now()-startTime)/1000);
+const m=Math.floor(diff/60).toString().padStart(2,'0');
+const s=(diff%60).toString().padStart(2,'0');
+const t=document.getElementById("timer");
+if(t) t.textContent=`⏱ ${m}:${s}`;
 }
 
 function renderWorkout(){
-    const div=document.getElementById("workout");
-    div.innerHTML="";
+const w=document.getElementById("w");
+w.innerHTML=`
+<div class="card">
+<div id="timer" class="timer">⏱ 00:00</div>
+<div class="progress"><div id="bar" class="progress-bar"></div></div>
+</div>
+`;
 
-    currentWorkout.forEach((item,i)=>{
-        const c=document.createElement("div");
-        c.className="card";
-        c.innerHTML=`
-            <h4>${item.exercise}</h4>
-            <button class="swap" onclick="swapExercise(${i})">🔁 Swap Exercise</button>
-            <input placeholder="Weight" id="w-${i}">
-            <input placeholder="Reps" id="r-${i}">
-            <button class="log" onclick="addSet(${i})">➕ Add Set</button>
-        `;
-        div.appendChild(c);
-    });
+workout.forEach((e,i)=>{
+w.innerHTML+=`
+<div class="card">
+<h4>🏋️ ${e.name}</h4>
+<button class="swap" onclick="swap(${i})">🔁 Swap</button>
+<input placeholder="Weight">
+<input placeholder="Reps">
+<button onclick="logSet(${i})">Add Set</button>
+</div>
+`;
+});
 
-    div.innerHTML+=`<button class="finish" onclick="finishWorkout()">🏁 Finish Workout</button>`;
+w.innerHTML+=`<button class="finish" onclick="finish()">Finish Workout</button>`;
 }
 
-function swapExercise(i){
-    const pool=combinedPool();
-    let ex;
-    do{
-        ex=pool[Math.floor(Math.random()*pool.length)];
-    }while(currentWorkout.some(e=>e.exercise===ex));
-    currentWorkout[i].exercise=ex;
-    renderWorkout();
+function swap(i){
+const p=pool();
+workout[i].name=p[Math.floor(Math.random()*p.length)];
+renderWorkout();
 }
 
-function addSet(i){
-    const w=document.getElementById(`w-${i}`).value;
-    const r=document.getElementById(`r-${i}`).value;
-    if(!w||!r)return;
-    currentWorkout[i].sets.push({w,r});
+function logSet(i){
+workout[i].sets.push({});
+updateProgress();
 }
 
-function finishWorkout(){
-    const history=JSON.parse(localStorage.getItem("history")||"[]");
-    history.push({
-        date:new Date().toLocaleString(),
-        themes:Array.from(selectedThemes),
-        workout:currentWorkout
-    });
-    localStorage.setItem("history",JSON.stringify(history));
-    renderSchedule();
+function updateProgress(){
+const total=workout.length;
+const done=workout.filter(e=>e.sets.length>0).length;
+const percent=(done/total)*100;
+document.getElementById("bar").style.width=percent+"%";
 }
 
-function renderHistory(){
-    const app=document.getElementById("app");
-    const history=JSON.parse(localStorage.getItem("history")||"[]");
-
-    app.innerHTML="<h3>📜 Past Workouts</h3>";
-
-    history.slice().reverse().forEach(w=>{
-        const c=document.createElement("div");
-        c.className="card";
-        c.innerHTML=`<b>${w.date}</b><br>${w.themes.join(" + ")}`;
-        app.appendChild(c);
-    });
+function finish(){
+clearInterval(timerInterval);
+const history=JSON.parse(localStorage.getItem("history")||"[]");
+history.push({
+date:new Date().toLocaleString(),
+themes:Array.from(selected),
+workout:workout,
+duration:Math.floor((Date.now()-startTime)/1000)
+});
+localStorage.setItem("history",JSON.stringify(history));
+schedule();
 }
 
-function renderStats(){
-    document.getElementById("app").innerHTML="<h3>📊 Stats dashboard coming next</h3>";
+function historyView(){
+const h=JSON.parse(localStorage.getItem("history")||"[]");
+let html="<div class='card'><b>Past Sessions</b></div>";
+h.slice().reverse().forEach(s=>{
+html+=`<div class="card">${s.date}<br>${s.themes.join(" + ")}</div>`;
+});
+document.getElementById("app").innerHTML=html;
 }
 
-renderSchedule();
+function stats(){
+const h=JSON.parse(localStorage.getItem("history")||"[]");
+document.getElementById("app").innerHTML=`
+<div class="card">
+Total workouts: ${h.length}
+</div>
+`;
+}
+
+schedule();
 </script>
 
 </body>
