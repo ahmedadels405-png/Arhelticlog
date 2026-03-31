@@ -64,33 +64,11 @@ button{
 .finish{background:#ef4444}
 .swap{background:#eab308;color:black}
 .log{background:#3b82f6}
-.edit{background:#374151}
-.save{background:#22c55e;color:black}
-.cancel{background:#ef4444}
 
 .grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
     gap:8px;
-}
-
-.stat{
-    background:#162019;
-    padding:12px;
-    border-radius:14px;
-}
-
-.stat input{
-    width:100%;
-    margin-top:4px;
-    padding:6px;
-    border:none;
-    border-radius:8px;
-}
-
-.set{
-    font-size:14px;
-    opacity:.9;
 }
 </style>
 </head>
@@ -109,40 +87,24 @@ button{
 
 <script>
 const allExercises=[
-"Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges",
-"Romanian Deadlift","Deadlift","Bench Press","Incline Bench Press","Push Up","Dips",
-"Overhead Press","Lateral Raise","Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row",
-"Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise"
+"Back Squat","Front Squat","Bulgarian Split Squat","Romanian Deadlift",
+"Bench Press","Incline Bench Press","Overhead Press","Dips",
+"Pull Up","Barbell Row","Lat Pulldown","Dumbbell Row",
+"Power Clean","Box Jump","Kettlebell Swing","Sprint",
+"Plank","Russian Twist","Hanging Leg Raise"
 ];
 
 const workoutPools={
-explosive:["Power Clean","Box Jump","Kettlebell Swing","Sprint","Broad Jump"],
-push:["Bench Press","Incline Bench Press","Overhead Press","Dips","Push Up"],
-pull:["Pull Up","Barbell Row","Lat Pulldown","Face Pull","Dumbbell Row"],
-legs:["Back Squat","Front Squat","Bulgarian Split Squat","Romanian Deadlift","Walking Lunges"],
-core:["Plank","Russian Twist","Hanging Leg Raise","Side Plank","Ab Wheel"],
+explosive:["Power Clean","Box Jump","Kettlebell Swing","Sprint"],
+push:["Bench Press","Incline Bench Press","Overhead Press","Dips"],
+pull:["Pull Up","Barbell Row","Lat Pulldown","Dumbbell Row"],
+legs:["Back Squat","Front Squat","Bulgarian Split Squat","Romanian Deadlift"],
+core:["Plank","Russian Twist","Hanging Leg Raise"],
 mixed:allExercises
 };
 
 let selectedType="mixed";
 let currentWorkout=[];
-let editingStats=false;
-
-const defaultStats={
-weight:81.7,
-bodyfat:15.2,
-muscle:54.8,
-bmr:1851,
-age:41
-};
-
-function getStats(){
-    return JSON.parse(localStorage.getItem("stats")||JSON.stringify(defaultStats));
-}
-
-function saveStats(s){
-    localStorage.setItem("stats",JSON.stringify(s));
-}
 
 function showTab(name,el){
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -153,30 +115,14 @@ function showTab(name,el){
     if(name==="stats") renderStats();
 }
 
-function getStreak(){
-    const history=JSON.parse(localStorage.getItem("history")||"[]");
-    if(history.length===0) return 0;
-
-    let streak=1;
-    for(let i=history.length-1;i>0;i--){
-        const d1=new Date(history[i].date).setHours(0,0,0,0);
-        const d2=new Date(history[i-1].date).setHours(0,0,0,0);
-        if((d1-d2)/(1000*60*60*24)===1) streak++;
-        else break;
-    }
-    return streak;
-}
-
 function renderSchedule(){
     const today=new Date().toLocaleDateString(undefined,{weekday:'long'});
-    const streak=getStreak();
-
     const app=document.getElementById("app");
+
     app.innerHTML=`
     <div class="card">
         <h3>🗓 ${today}</h3>
         <h2>🔥 ${selectedType.toUpperCase()} SESSION</h2>
-        <div>🔥 Streak: ${streak} days</div>
     </div>
 
     <div class="card">
@@ -220,15 +166,13 @@ function renderWorkout(){
     const div=document.getElementById("workout");
     div.innerHTML="";
     currentWorkout.forEach((item,i)=>{
-        const last=getLastSet(item.exercise);
         const c=document.createElement("div");
         c.className="card";
         c.innerHTML=`
             <h4>${item.exercise}</h4>
             <button class="swap" onclick="swapExercise(${i})">🔁 Swap Exercise</button>
-            <div id="sets-${i}"></div>
-            <input placeholder="Weight" id="w-${i}" value="${last?.w||""}">
-            <input placeholder="Reps" id="r-${i}" value="${last?.r||""}">
+            <input placeholder="Weight" id="w-${i}">
+            <input placeholder="Reps" id="r-${i}">
             <button class="log" onclick="addSet(${i})">➕ Add Set</button>
         `;
         div.appendChild(c);
@@ -252,15 +196,6 @@ function addSet(i){
     const r=document.getElementById(`r-${i}`).value;
     if(!w||!r)return;
     currentWorkout[i].sets.push({w,r});
-    renderWorkout();
-}
-
-function getLastSet(exercise){
-    const history=JSON.parse(localStorage.getItem("history")||"[]");
-    for(let i=history.length-1;i>=0;i--){
-        const ex=history[i].workout.find(e=>e.exercise===exercise);
-        if(ex && ex.sets.length) return ex.sets[ex.sets.length-1];
-    }
 }
 
 function finishWorkout(){
@@ -283,53 +218,13 @@ function renderHistory(){
     history.slice().reverse().forEach(w=>{
         const c=document.createElement("div");
         c.className="card";
-        c.innerHTML=`<b>${w.date}</b><br>${w.type.toUpperCase()}`;
-        w.workout.forEach(ex=>{
-            c.innerHTML+=`<div class="set">${ex.exercise}: ${ex.sets.map(s=>s.w+"x"+s.r).join(", ")}</div>`;
-        });
+        c.innerHTML=`<b>${w.date}</b><br>${w.type}`;
         app.appendChild(c);
     });
 }
 
 function renderStats(){
-    const s=getStats();
-    const app=document.getElementById("app");
-
-    if(!editingStats){
-        app.innerHTML=`
-        <button class="edit" onclick="editingStats=true;renderStats()">✏️ Edit Stats</button>
-        <div class="grid">
-            <div class="stat">Weight<br><b>${s.weight} kg</b></div>
-            <div class="stat">Body Fat<br><b>${s.bodyfat}%</b></div>
-            <div class="stat">Muscle<br><b>${s.muscle}%</b></div>
-            <div class="stat">BMR<br><b>${s.bmr} kcal</b></div>
-            <div class="stat">Metabolic Age<br><b>${s.age}</b></div>
-        </div>`;
-    }else{
-        app.innerHTML=`
-        <div class="grid">
-            <div class="stat">Weight<input id="sw" value="${s.weight}"></div>
-            <div class="stat">Body Fat<input id="sf" value="${s.bodyfat}"></div>
-            <div class="stat">Muscle<input id="sm" value="${s.muscle}"></div>
-            <div class="stat">BMR<input id="sb" value="${s.bmr}"></div>
-            <div class="stat">Age<input id="sa" value="${s.age}"></div>
-        </div>
-        <button class="save" onclick="saveStatChanges()">Save</button>
-        <button class="cancel" onclick="editingStats=false;renderStats()">Cancel</button>
-        `;
-    }
-}
-
-function saveStatChanges(){
-    saveStats({
-        weight:document.getElementById("sw").value,
-        bodyfat:document.getElementById("sf").value,
-        muscle:document.getElementById("sm").value,
-        bmr:document.getElementById("sb").value,
-        age:document.getElementById("sa").value
-    });
-    editingStats=false;
-    renderStats();
+    document.getElementById("app").innerHTML="<h3>Stats coming next</h3>";
 }
 
 renderSchedule();
