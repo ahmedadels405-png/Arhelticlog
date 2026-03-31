@@ -5,112 +5,40 @@
 <title>AthleticLog</title>
 
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 :root{
---bg:#0b0d11;
---card:rgba(255,255,255,0.05);
---border:rgba(255,255,255,0.08);
---accent:linear-gradient(135deg,#60a5fa,#a78bfa);
+--bg:#0a0c10;
+--card:#11151c;
+--border:#1f2633;
+--accent:linear-gradient(135deg,#4f46e5,#06b6d4);
 --text:#f1f5f9;
 --muted:#94a3b8;
 }
 
-body{
-margin:0;
-font-family:-apple-system;
-background:var(--bg);
-color:var(--text);
-}
-
-header{
-padding:18px;
-text-align:center;
-font-size:22px;
-font-weight:600;
-}
-
-.tabs{
-display:flex;
-gap:8px;
-padding:0 12px 12px;
-}
-
-.tab{
-flex:1;
-padding:10px;
-border-radius:14px;
-text-align:center;
-background:#131720;
-color:var(--muted);
-}
-
-.tab.active{
-background:var(--accent);
-color:white;
-}
-
+body{margin:0;font-family:-apple-system;background:var(--bg);color:var(--text);}
+header{padding:20px;text-align:center;font-size:24px;font-weight:700;background:var(--accent);}
+.tabs{display:flex;gap:8px;padding:12px;}
+.tab{flex:1;padding:12px;border-radius:16px;text-align:center;background:#121826;color:var(--muted);}
+.tab.active{background:var(--accent);color:white;}
 .container{padding:14px;}
-
-.card{
-background:var(--card);
-border:1px solid var(--border);
-padding:16px;
-margin-bottom:14px;
-border-radius:20px;
-}
-
-button{
-width:100%;
-padding:12px;
-border:none;
-border-radius:14px;
-margin-top:8px;
-font-size:15px;
-}
-
-.theme{background:#131720;color:var(--muted);}
-.theme.active{background:var(--accent);color:white;}
-
-.start{background:var(--accent);color:white;}
-.finish{background:#ef4444;color:white;}
-.swap{background:#1f2430;color:white;}
-
-.grid{
-display:grid;
-grid-template-columns:repeat(2,1fr);
-gap:10px;
-}
-
-input{
-width:100%;
-padding:10px;
-margin-top:6px;
-border-radius:12px;
-border:1px solid var(--border);
-background:#0f131a;
-color:white;
-}
-
-.progress{
-height:8px;
-background:#1f2430;
-border-radius:10px;
-overflow:hidden;
-margin-top:10px;
-}
-
-.progress-bar{
-height:100%;
-background:var(--accent);
-width:0%;
-}
-
-.timer{
-font-size:18px;
-margin-top:4px;
-color:#a5b4fc;
-}
+.card{background:var(--card);border:1px solid var(--border);padding:16px;margin-bottom:16px;border-radius:20px;box-shadow:0 4px 18px rgba(0,0,0,0.4);}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+button{width:100%;padding:12px;border:none;border-radius:14px;margin-top:8px;font-size:15px;background:#1f2633;color:white;}
+.theme.active{background:var(--accent);}
+.start{background:var(--accent);}
+.finish{background:#ef4444;}
+.swap{background:#374151;}
+input{width:100%;padding:10px;margin-top:6px;border-radius:12px;border:1px solid var(--border);background:#0f131a;color:white;}
+.timer{font-size:18px;margin-top:4px;color:#38bdf8;}
+.progress-ring{width:80px;height:80px;border-radius:50%;background:conic-gradient(#06b6d4 0%, #1f2430 0%);display:flex;align-items:center;justify-content:center;margin:auto;}
+.progress-ring span{font-size:18px;}
+.stat-tile{background:linear-gradient(135deg,#1f2937,#111827);padding:12px;border-radius:14px;text-align:center;}
+.stat-value{font-size:20px;font-weight:700;}
+.stat-label{font-size:12px;color:var(--muted);}
 </style>
 </head>
 
@@ -127,75 +55,86 @@ color:#a5b4fc;
 <div class="container" id="app"></div>
 
 <script>
-if('serviceWorker' in navigator){
-navigator.serviceWorker.register('service-worker.js');
-}
-
-const pools={
+const exerciseLibrary = {
 push:["Bench Press","Incline Press","Overhead Press","Dips"],
-pull:["Pull Up","Row","Face Pull"],
+pull:["Pull Up","Barbell Row","Face Pull"],
 legs:["Squat","Lunge","RDL"],
-core:["Plank","Hanging Raise","Twist"],
-explosive:["Clean","Box Jump","Sprint"]
+core:["Plank","Hanging Raise","Russian Twist"],
+explosive:["Power Clean","Box Jump","Sprint"]
 };
 
-let selected=new Set(["push"]);
+const stretches = [
+"Neck Rolls","Hip Flexor Stretch","Hamstring Stretch",
+"Thoracic Rotations","Ankle Mobility"
+];
+
+let selectedThemes = new Set(["push"]);
 let workout=[];
 let startTime=null;
 let timerInterval=null;
 
+// body data storage
+if(!localStorage.getItem("bodyLog")){
+localStorage.setItem("bodyLog",JSON.stringify([]));
+}
+
 function showTab(name,el){
 document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
 el.classList.add('active');
-if(name==="schedule") schedule();
-if(name==="history") historyView();
-if(name==="stats") statsView();
+if(name==="schedule") renderSchedule();
+if(name==="history") renderHistory();
+if(name==="stats") renderStats();
 }
 
-function schedule(){
-const today=new Date().toLocaleDateString(undefined,{weekday:'long'});
+function renderSchedule(){
 document.getElementById("app").innerHTML=`
-<div class="card"><h3>${today}</h3><h2>${Array.from(selected).join(" + ")}</h2></div>
+<div class="card">
+<h3>📅 Today</h3>
+<h2>${Array.from(selectedThemes).join(" + ")}</h2>
+</div>
 
 <div class="card">
+<h3>🎯 Training Themes</h3>
 <div class="grid">
-${btn("push","Push")}
-${btn("pull","Pull")}
-${btn("legs","Legs")}
-${btn("core","Core")}
-${btn("explosive","Explosive")}
+${themeBtn("push")}${themeBtn("pull")}${themeBtn("legs")}
+${themeBtn("core")}${themeBtn("explosive")}
 </div>
-<button class="start" onclick="start()">Start Workout</button>
+<button class="start" onclick="startWorkout()">Start Workout</button>
 </div>
 
-<div id="w"></div>`;
+<div class="card">
+<h3>🧘 Daily Mobility</h3>
+<ul>${stretches.map(s=>`<li>${s}</li>`).join("")}</ul>
+</div>
+
+<div id="workout"></div>`;
 }
 
-function btn(k,l){
-const a=selected.has(k)?"active":"";
-return `<button class="theme ${a}" onclick="toggle('${k}')">${l}</button>`;
+function themeBtn(t){
+const active = selectedThemes.has(t)?"active":"";
+return `<button class="theme ${active}" onclick="toggleTheme('${t}')">${t}</button>`;
 }
 
-function toggle(t){
-selected.has(t)?selected.delete(t):selected.add(t);
-if(selected.size===0) selected.add("push");
-schedule();
+function toggleTheme(t){
+selectedThemes.has(t)?selectedThemes.delete(t):selectedThemes.add(t);
+if(selectedThemes.size===0) selectedThemes.add("push");
+renderSchedule();
 }
 
-function pool(){
-let s=new Set();
-selected.forEach(t=>pools[t].forEach(e=>s.add(e)));
-return Array.from(s);
+function allExercises(){
+let all=[];
+Object.values(exerciseLibrary).forEach(arr=>all.push(...arr));
+return all;
 }
 
-function start(){
-const p=pool();
+function startWorkout(){
+const pool=[];
+selectedThemes.forEach(t=>pool.push(...exerciseLibrary[t]));
 workout=[];
 for(let i=0;i<5;i++){
-workout.push({name:p[Math.floor(Math.random()*p.length)],sets:[]});
+workout.push({name:pool[Math.floor(Math.random()*pool.length)],sets:[]});
 }
 startTime=Date.now();
-clearInterval(timerInterval);
 timerInterval=setInterval(updateTimer,1000);
 renderWorkout();
 }
@@ -208,23 +147,25 @@ document.getElementById("timer").textContent=`⏱ ${m}:${s}`;
 }
 
 function renderWorkout(){
-const w=document.getElementById("w");
-w.innerHTML=`<div class="card">
+const container=document.getElementById("workout");
+container.innerHTML=`
+<div class="card" style="text-align:center">
+<div class="progress-ring" id="ring"><span id="pct">0%</span></div>
 <div id="timer" class="timer">⏱ 00:00</div>
-<div class="progress"><div id="bar" class="progress-bar"></div></div>
 </div>`;
 
 workout.forEach((e,i)=>{
-w.innerHTML+=`<div class="card">
+container.innerHTML+=`
+<div class="card">
 <h4>${e.name}</h4>
-<button class="swap" onclick="swap(${i})">Swap</button>
+<button class="swap" onclick="swapExercise(${i})">🔁 Swap</button>
 <input id="w${i}" placeholder="Weight">
 <input id="r${i}" placeholder="Reps">
 <button onclick="logSet(${i})">Add Set</button>
 </div>`;
 });
 
-w.innerHTML+=`<button class="finish" onclick="finish()">Finish Workout</button>`;
+container.innerHTML+=`<button class="finish" onclick="finishWorkout()">Finish Workout</button>`;
 }
 
 function logSet(i){
@@ -236,86 +177,113 @@ updateProgress();
 }
 
 function updateProgress(){
-const total=workout.length;
 const done=workout.filter(e=>e.sets.length>0).length;
-document.getElementById("bar").style.width=(done/total*100)+"%";
+const pct=Math.floor(done/workout.length*100);
+document.getElementById("pct").textContent=pct+"%";
+document.getElementById("ring").style.background=
+`conic-gradient(#06b6d4 ${pct}%, #1f2430 ${pct}%)`;
 }
 
-function swap(i){
-const p=pool();
-workout[i].name=p[Math.floor(Math.random()*p.length)];
+function swapExercise(i){
+const pool = allExercises();
+workout[i].name = pool[Math.floor(Math.random()*pool.length)];
 renderWorkout();
 }
 
-function finish(){
+function finishWorkout(){
 clearInterval(timerInterval);
-const history=JSON.parse(localStorage.getItem("history")||"[]");
-history.push({
-date:new Date().toLocaleString(),
-themes:Array.from(selected),
-workout:workout,
-duration:Math.floor((Date.now()-startTime)/1000)
-});
-localStorage.setItem("history",JSON.stringify(history));
-schedule();
+renderSchedule();
 }
 
-function historyView(){
-const h=JSON.parse(localStorage.getItem("history")||"[]");
-let html="<div class='card'><b>Past Sessions</b></div>";
-h.slice().reverse().forEach(s=>{
-html+=`<div class="card">${s.date}<br>${s.themes.join(" + ")}</div>`;
-});
-document.getElementById("app").innerHTML=html;
+function renderHistory(){
+document.getElementById("app").innerHTML=
+"<div class='card'>History coming soon</div>";
 }
 
-function statsView(){
-const h=JSON.parse(localStorage.getItem("history")||"[]");
-const body=JSON.parse(localStorage.getItem("body")||"{}");
-
-let totalSets=0,totalTime=0,themeCount={};
-
-h.forEach(s=>{
-totalTime+=s.duration||0;
-s.workout.forEach(e=>totalSets+=e.sets.length);
-s.themes.forEach(t=>themeCount[t]=(themeCount[t]||0)+1);
-});
-
-let mostTheme=Object.keys(themeCount).sort((a,b)=>themeCount[b]-themeCount[a])[0]||"None";
+function renderStats(){
+const bodyLog = JSON.parse(localStorage.getItem("bodyLog"));
 
 document.getElementById("app").innerHTML=`
 <div class="card">
-<b>Total workouts:</b> ${h.length}<br>
-<b>Total sets:</b> ${totalSets}<br>
-<b>Most trained:</b> ${mostTheme}<br>
-<b>Total time:</b> ${Math.floor(totalTime/60)} min
+<h3>📊 Body Stats</h3>
+<div class="grid">
+<div class="stat-tile">
+<div class="stat-value">${latest(bodyLog,"weight")}</div>
+<div class="stat-label">Weight (kg)</div>
+</div>
+<div class="stat-tile">
+<div class="stat-value">${latest(bodyLog,"fat")}%</div>
+<div class="stat-label">Body Fat</div>
+</div>
+</div>
 </div>
 
 <div class="card">
-<h3>Body Measurements</h3>
-<input id="bw" placeholder="Weight" value="${body.weight||''}">
-<input id="bf" placeholder="Body Fat %" value="${body.fat||''}">
-<input id="ch" placeholder="Chest" value="${body.chest||''}">
-<input id="wa" placeholder="Waist" value="${body.waist||''}">
-<input id="ar" placeholder="Arms" value="${body.arms||''}">
-<button onclick="saveBody()">Save Measurements</button>
+<h3>✏️ Log New Measurement</h3>
+<input id="bw" placeholder="Weight (kg)">
+<input id="bf" placeholder="Body Fat %">
+<button onclick="saveBody()">Save Measurement</button>
+</div>
+
+<div class="card">
+<canvas id="chart"></canvas>
 </div>
 `;
+
+drawChart(bodyLog);
+}
+
+function latest(arr,key){
+if(arr.length===0) return "--";
+return arr[arr.length-1][key] || "--";
 }
 
 function saveBody(){
-const data={
-weight:document.getElementById("bw").value,
-fat:document.getElementById("bf").value,
-chest:document.getElementById("ch").value,
-waist:document.getElementById("wa").value,
-arms:document.getElementById("ar").value
-};
-localStorage.setItem("body",JSON.stringify(data));
-alert("Saved");
+const weight=document.getElementById("bw").value;
+const fat=document.getElementById("bf").value;
+if(!weight || !fat) return;
+
+const log=JSON.parse(localStorage.getItem("bodyLog"));
+log.push({
+date:new Date().toLocaleDateString(),
+weight:parseFloat(weight),
+fat:parseFloat(fat)
+});
+localStorage.setItem("bodyLog",JSON.stringify(log));
+renderStats();
 }
 
-schedule();
+function drawChart(log){
+const ctx=document.getElementById("chart");
+new Chart(ctx,{
+type:"line",
+data:{
+labels:log.map(e=>e.date),
+datasets:[
+{
+label:"Weight",
+data:log.map(e=>e.weight),
+borderColor:"#4f46e5"
+},
+{
+label:"Body Fat %",
+data:log.map(e=>e.fat),
+borderColor:"#06b6d4"
+}
+]
+},
+options:{
+responsive:true,
+plugins:{legend:{labels:{color:"#fff"}}},
+scales:{
+x:{ticks:{color:"#aaa"}},
+y:{ticks:{color:"#aaa"}}
+}
+}
+});
+}
+
+renderSchedule();
 </script>
 
 </body>
