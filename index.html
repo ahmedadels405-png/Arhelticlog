@@ -6,176 +6,268 @@
 
 <style>
 body{
-    font-family:-apple-system,BlinkMacSystemFont;
-    background:#0b0b0b;
-    color:#f1f1f1;
     margin:0;
-    padding:18px;
+    font-family:-apple-system,BlinkMacSystemFont;
+    background:#0b0f0c;
+    color:#e6f4ea;
 }
 
-h1{
+header{
+    padding:16px;
     text-align:center;
-    margin:0 0 15px 0;
+    font-size:20px;
+    font-weight:600;
+}
+
+.tabs{
+    display:flex;
+    gap:8px;
+    padding:0 12px 12px 12px;
+}
+
+.tab{
+    flex:1;
+    padding:10px;
+    border-radius:12px;
+    text-align:center;
+    background:#162019;
+    color:#9fb3a3;
+}
+
+.tab.active{
+    background:#22c55e;
+    color:black;
+    font-weight:600;
+}
+
+.container{
+    padding:12px;
+}
+
+.card{
+    background:#162019;
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:16px;
 }
 
 button{
     width:100%;
-    padding:15px;
-    margin:6px 0;
-    font-size:18px;
+    padding:12px;
     border:none;
+    border-radius:12px;
+    margin-top:8px;
+    font-size:16px;
+}
+
+.start{background:#22c55e;color:black}
+.finish{background:#ef4444}
+.swap{background:#eab308;color:black}
+.log{background:#3b82f6}
+.edit{background:#374151}
+.save{background:#22c55e;color:black}
+.cancel{background:#ef4444}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.stat{
+    background:#162019;
+    padding:12px;
     border-radius:14px;
 }
 
-.start{background:#2ecc71}
-.finish{background:#e74c3c}
-.history{background:#3498db}
-.log{background:#8e44ad}
-.swap{background:#f1c40f;color:black}
-
-.card{
-    background:#161616;
-    padding:16px;
-    margin:12px 0;
-    border-radius:16px;
-    box-shadow:0 0 8px rgba(0,0,0,.4);
-}
-
-.set{
-    font-size:14px;
-    opacity:.85;
-}
-
-.row{
-    display:flex;
-    gap:4%;
-    margin-top:8px;
-}
-
-input{
-    width:48%;
-    padding:10px;
-    border-radius:10px;
+.stat input{
+    width:100%;
+    margin-top:4px;
+    padding:6px;
     border:none;
-    font-size:16px;
+    border-radius:8px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🏋️ AthleticLog</h1>
+<header>🏋️ AthleticLog</header>
 
-<button class="start" onclick="startWorkout()">🚀 Start Workout</button>
-<button class="finish" onclick="finishWorkout()">🏁 Finish Workout</button>
-<button class="history" onclick="showHistory()">📜 History</button>
+<div class="tabs">
+    <div class="tab active" onclick="showTab('schedule',this)">🏋️ Schedule</div>
+    <div class="tab" onclick="showTab('history',this)">📜 History</div>
+    <div class="tab" onclick="showTab('stats',this)">📊 Stats</div>
+</div>
 
-<div id="app"></div>
+<div class="container" id="app"></div>
 
 <script>
 const exercises=[
 "Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges",
-"Leg Press","Hack Squat","Romanian Deadlift","Deadlift","Sumo Deadlift","Trap Bar Deadlift",
-"Bench Press","Incline Bench Press","Push Up","Dips","Overhead Press","Lateral Raise",
-"Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row","Face Pull","Shrugs",
-"Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise",
-"Battle Ropes","Sled Push","Sprint","Calf Raise","Single Leg Deadlift","Good Morning",
-"Cable Kickback","Clamshell","Turkish Get Up"
+"Romanian Deadlift","Deadlift","Bench Press","Incline Bench Press","Push Up","Dips",
+"Overhead Press","Lateral Raise","Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row",
+"Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise"
 ];
 
 let currentWorkout=[];
+let editingStats=false;
+
+const defaultStats={
+weight:81.7,
+bodyfat:15.2,
+muscle:54.8,
+bmr:1851,
+age:41
+};
+
+function getStats(){
+    return JSON.parse(localStorage.getItem("stats")||JSON.stringify(defaultStats));
+}
+
+function saveStats(s){
+    localStorage.setItem("stats",JSON.stringify(s));
+}
+
+function showTab(name,el){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+
+    if(name==="schedule") renderSchedule();
+    if(name==="history") renderHistory();
+    if(name==="stats") renderStats();
+}
+
+function renderSchedule(){
+    const app=document.getElementById("app");
+    app.innerHTML=`
+        <div class="card">
+            <h3>🔥 Hypertrophy & Core</h3>
+            <button class="start" onclick="startWorkout()">Start Workout</button>
+        </div>
+        <div id="workout"></div>
+    `;
+}
 
 function pickExercises(){
     const chosen=[];
     while(chosen.length<5){
-        const pick=exercises[Math.floor(Math.random()*exercises.length)];
-        if(!chosen.includes(pick)) chosen.push(pick);
+        const ex=exercises[Math.floor(Math.random()*exercises.length)];
+        if(!chosen.includes(ex)) chosen.push(ex);
     }
     return chosen;
 }
 
 function startWorkout(){
-    currentWorkout = pickExercises().map(ex=>({exercise:ex,sets:[]}));
+    currentWorkout=pickExercises().map(e=>({exercise:e,sets:[]}));
     renderWorkout();
 }
 
 function renderWorkout(){
-    const app=document.getElementById("app");
-    app.innerHTML="";
+    const div=document.getElementById("workout");
+    div.innerHTML="";
     currentWorkout.forEach((item,i)=>{
-        const card=document.createElement("div");
-        card.className="card";
-        card.innerHTML=`
-            <h3>💪 <span id="name-${i}">${item.exercise}</span></h3>
-            <button class="swap" onclick="swapExercise(${i})">🔁 Swap Exercise</button>
-
+        const c=document.createElement("div");
+        c.className="card";
+        c.innerHTML=`
+            <h4>${item.exercise}</h4>
+            <button class="swap" onclick="swapExercise(${i})">Swap Exercise</button>
             <div id="sets-${i}"></div>
-
-            <div class="row">
-                <input type="number" placeholder="Weight (kg)" id="w-${i}">
-                <input type="number" placeholder="Reps" id="r-${i}">
-            </div>
-
-            <button class="log" onclick="addSet(${i})">➕ Add Set</button>
+            <input placeholder="Weight" id="w-${i}">
+            <input placeholder="Reps" id="r-${i}">
+            <button class="log" onclick="addSet(${i})">Add Set</button>
         `;
-        app.appendChild(card);
-        updateSets(i);
+        div.appendChild(c);
     });
+
+    div.innerHTML+=`<button class="finish" onclick="finishWorkout()">Finish Workout</button>`;
 }
 
 function swapExercise(i){
-    let newEx;
+    let ex;
     do{
-        newEx=exercises[Math.floor(Math.random()*exercises.length)];
-    }while(currentWorkout.some(e=>e.exercise===newEx));
-    currentWorkout[i].exercise=newEx;
-    document.getElementById(`name-${i}`).innerText=newEx;
+        ex=exercises[Math.floor(Math.random()*exercises.length)];
+    }while(currentWorkout.some(e=>e.exercise===ex));
+    currentWorkout[i].exercise=ex;
+    renderWorkout();
 }
 
 function addSet(i){
     const w=document.getElementById(`w-${i}`).value;
     const r=document.getElementById(`r-${i}`).value;
-    if(!w||!r){alert("Enter weight and reps");return;}
     currentWorkout[i].sets.push({w,r});
-    updateSets(i);
-    document.getElementById(`w-${i}`).value="";
-    document.getElementById(`r-${i}`).value="";
-}
-
-function updateSets(i){
-    const div=document.getElementById(`sets-${i}`);
-    if(!div) return;
-    div.innerHTML=currentWorkout[i].sets
-        .map(s=>`<div class="set">🏋️ ${s.w}kg × ${s.r}</div>`)
-        .join("");
+    renderWorkout();
 }
 
 function finishWorkout(){
-    if(currentWorkout.length===0) return;
     const history=JSON.parse(localStorage.getItem("history")||"[]");
     history.push({
         date:new Date().toLocaleString(),
         workout:currentWorkout
     });
     localStorage.setItem("history",JSON.stringify(history));
-    currentWorkout=[];
-    document.getElementById("app").innerHTML="<h2>✅ Workout Saved</h2>";
+    renderSchedule();
 }
 
-function showHistory(){
-    const history=JSON.parse(localStorage.getItem("history")||"[]");
+function renderHistory(){
     const app=document.getElementById("app");
-    app.innerHTML="<h2>📜 Past Workouts</h2>";
+    const history=JSON.parse(localStorage.getItem("history")||"[]");
+
+    app.innerHTML="<h3>Past Workouts</h3>";
+
     history.slice().reverse().forEach(w=>{
-        const card=document.createElement("div");
-        card.className="card";
-        card.innerHTML=`<b>🗓 ${w.date}</b>`;
+        const c=document.createElement("div");
+        c.className="card";
+        c.innerHTML=`<b>${w.date}</b>`;
         w.workout.forEach(ex=>{
-            card.innerHTML+=`<div class="set">💪 ${ex.exercise}: ${ex.sets.map(s=>s.w+"kg×"+s.r).join(", ")}</div>`;
+            c.innerHTML+=`<div>${ex.exercise}: ${ex.sets.map(s=>s.w+"x"+s.r).join(", ")}</div>`;
         });
-        app.appendChild(card);
+        app.appendChild(c);
     });
 }
+
+function renderStats(){
+    const s=getStats();
+    const app=document.getElementById("app");
+
+    if(!editingStats){
+        app.innerHTML=`
+        <button class="edit" onclick="editingStats=true;renderStats()">✏️ Edit Stats</button>
+        <div class="grid">
+            <div class="stat">Weight<br><b>${s.weight} kg</b></div>
+            <div class="stat">Body Fat<br><b>${s.bodyfat}%</b></div>
+            <div class="stat">Muscle<br><b>${s.muscle}%</b></div>
+            <div class="stat">BMR<br><b>${s.bmr} kcal</b></div>
+            <div class="stat">Metabolic Age<br><b>${s.age}</b></div>
+        </div>`;
+    }else{
+        app.innerHTML=`
+        <div class="grid">
+            <div class="stat">Weight<input id="sw" value="${s.weight}"></div>
+            <div class="stat">Body Fat<input id="sf" value="${s.bodyfat}"></div>
+            <div class="stat">Muscle<input id="sm" value="${s.muscle}"></div>
+            <div class="stat">BMR<input id="sb" value="${s.bmr}"></div>
+            <div class="stat">Age<input id="sa" value="${s.age}"></div>
+        </div>
+        <button class="save" onclick="saveStatChanges()">Save</button>
+        <button class="cancel" onclick="editingStats=false;renderStats()">Cancel</button>
+        `;
+    }
+}
+
+function saveStatChanges(){
+    saveStats({
+        weight:document.getElementById("sw").value,
+        bodyfat:document.getElementById("sf").value,
+        muscle:document.getElementById("sm").value,
+        bmr:document.getElementById("sb").value,
+        age:document.getElementById("sa").value
+    });
+    editingStats=false;
+    renderStats();
+}
+
+renderSchedule();
 </script>
 
 </body>
