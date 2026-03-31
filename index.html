@@ -71,7 +71,7 @@ button{
 .grid{
     display:grid;
     grid-template-columns:repeat(2,1fr);
-    gap:10px;
+    gap:8px;
 }
 
 .stat{
@@ -86,6 +86,11 @@ button{
     padding:6px;
     border:none;
     border-radius:8px;
+}
+
+.set{
+    font-size:14px;
+    opacity:.9;
 }
 </style>
 </head>
@@ -103,13 +108,23 @@ button{
 <div class="container" id="app"></div>
 
 <script>
-const exercises=[
+const allExercises=[
 "Back Squat","Front Squat","Goblet Squat","Bulgarian Split Squat","Walking Lunges",
 "Romanian Deadlift","Deadlift","Bench Press","Incline Bench Press","Push Up","Dips",
 "Overhead Press","Lateral Raise","Pull Up","Lat Pulldown","Barbell Row","Dumbbell Row",
 "Kettlebell Swing","Power Clean","Box Jump","Plank","Russian Twist","Hanging Leg Raise"
 ];
 
+const workoutPools={
+explosive:["Power Clean","Box Jump","Kettlebell Swing","Sprint","Broad Jump"],
+push:["Bench Press","Incline Bench Press","Overhead Press","Dips","Push Up"],
+pull:["Pull Up","Barbell Row","Lat Pulldown","Face Pull","Dumbbell Row"],
+legs:["Back Squat","Front Squat","Bulgarian Split Squat","Romanian Deadlift","Walking Lunges"],
+core:["Plank","Russian Twist","Hanging Leg Raise","Side Plank","Ab Wheel"],
+mixed:allExercises
+};
+
+let selectedType="mixed";
 let currentWorkout=[];
 let editingStats=false;
 
@@ -138,21 +153,59 @@ function showTab(name,el){
     if(name==="stats") renderStats();
 }
 
+function getStreak(){
+    const history=JSON.parse(localStorage.getItem("history")||"[]");
+    if(history.length===0) return 0;
+
+    let streak=1;
+    for(let i=history.length-1;i>0;i--){
+        const d1=new Date(history[i].date).setHours(0,0,0,0);
+        const d2=new Date(history[i-1].date).setHours(0,0,0,0);
+        if((d1-d2)/(1000*60*60*24)===1) streak++;
+        else break;
+    }
+    return streak;
+}
+
 function renderSchedule(){
+    const today=new Date().toLocaleDateString(undefined,{weekday:'long'});
+    const streak=getStreak();
+
     const app=document.getElementById("app");
     app.innerHTML=`
-        <div class="card">
-            <h3>🔥 Hypertrophy & Core</h3>
-            <button class="start" onclick="startWorkout()">Start Workout</button>
+    <div class="card">
+        <h3>🗓 ${today}</h3>
+        <h2>🔥 ${selectedType.toUpperCase()} SESSION</h2>
+        <div>🔥 Streak: ${streak} days</div>
+    </div>
+
+    <div class="card">
+        <b>Select Workout Type</b>
+        <div class="grid">
+            <button onclick="setType('explosive')">🔥 Explosive</button>
+            <button onclick="setType('push')">💪 Push</button>
+            <button onclick="setType('pull')">🧲 Pull</button>
+            <button onclick="setType('legs')">🦵 Legs</button>
+            <button onclick="setType('core')">🎯 Core</button>
+            <button onclick="setType('mixed')">⚡ Mixed</button>
         </div>
-        <div id="workout"></div>
+        <button class="start" onclick="startWorkout()">🚀 Start Workout</button>
+    </div>
+
+    <div id="workout"></div>
     `;
 }
 
+function setType(t){
+    selectedType=t;
+    renderSchedule();
+}
+
 function pickExercises(){
+    const pool=workoutPools[selectedType];
     const chosen=[];
     while(chosen.length<5){
-        const ex=exercises[Math.floor(Math.random()*exercises.length)];
+        const ex=pool[Math.floor(Math.random()*pool.length)];
         if(!chosen.includes(ex)) chosen.push(ex);
     }
     return chosen;
@@ -167,26 +220,28 @@ function renderWorkout(){
     const div=document.getElementById("workout");
     div.innerHTML="";
     currentWorkout.forEach((item,i)=>{
+        const last=getLastSet(item.exercise);
         const c=document.createElement("div");
         c.className="card";
         c.innerHTML=`
             <h4>${item.exercise}</h4>
-            <button class="swap" onclick="swapExercise(${i})">Swap Exercise</button>
+            <button class="swap" onclick="swapExercise(${i})">🔁 Swap Exercise</button>
             <div id="sets-${i}"></div>
-            <input placeholder="Weight" id="w-${i}">
-            <input placeholder="Reps" id="r-${i}">
-            <button class="log" onclick="addSet(${i})">Add Set</button>
+            <input placeholder="Weight" id="w-${i}" value="${last?.w||""}">
+            <input placeholder="Reps" id="r-${i}" value="${last?.r||""}">
+            <button class="log" onclick="addSet(${i})">➕ Add Set</button>
         `;
         div.appendChild(c);
     });
 
-    div.innerHTML+=`<button class="finish" onclick="finishWorkout()">Finish Workout</button>`;
+    div.innerHTML+=`<button class="finish" onclick="finishWorkout()">🏁 Finish Workout</button>`;
 }
 
 function swapExercise(i){
+    const pool=workoutPools[selectedType];
     let ex;
     do{
-        ex=exercises[Math.floor(Math.random()*exercises.length)];
+        ex=pool[Math.floor(Math.random()*pool.length)];
     }while(currentWorkout.some(e=>e.exercise===ex));
     currentWorkout[i].exercise=ex;
     renderWorkout();
@@ -195,14 +250,24 @@ function swapExercise(i){
 function addSet(i){
     const w=document.getElementById(`w-${i}`).value;
     const r=document.getElementById(`r-${i}`).value;
+    if(!w||!r)return;
     currentWorkout[i].sets.push({w,r});
     renderWorkout();
+}
+
+function getLastSet(exercise){
+    const history=JSON.parse(localStorage.getItem("history")||"[]");
+    for(let i=history.length-1;i>=0;i--){
+        const ex=history[i].workout.find(e=>e.exercise===exercise);
+        if(ex && ex.sets.length) return ex.sets[ex.sets.length-1];
+    }
 }
 
 function finishWorkout(){
     const history=JSON.parse(localStorage.getItem("history")||"[]");
     history.push({
         date:new Date().toLocaleString(),
+        type:selectedType,
         workout:currentWorkout
     });
     localStorage.setItem("history",JSON.stringify(history));
@@ -213,14 +278,14 @@ function renderHistory(){
     const app=document.getElementById("app");
     const history=JSON.parse(localStorage.getItem("history")||"[]");
 
-    app.innerHTML="<h3>Past Workouts</h3>";
+    app.innerHTML="<h3>📜 Past Workouts</h3>";
 
     history.slice().reverse().forEach(w=>{
         const c=document.createElement("div");
         c.className="card";
-        c.innerHTML=`<b>${w.date}</b>`;
+        c.innerHTML=`<b>${w.date}</b><br>${w.type.toUpperCase()}`;
         w.workout.forEach(ex=>{
-            c.innerHTML+=`<div>${ex.exercise}: ${ex.sets.map(s=>s.w+"x"+s.r).join(", ")}</div>`;
+            c.innerHTML+=`<div class="set">${ex.exercise}: ${ex.sets.map(s=>s.w+"x"+s.r).join(", ")}</div>`;
         });
         app.appendChild(c);
     });
