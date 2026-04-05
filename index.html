@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>PantryPal · 150+ Healthy Recipes</title>
+    <title>PantryPal · 150+ Healthy Recipes (FIXED)</title>
     <style>
         * {
             margin: 0;
@@ -119,13 +119,15 @@
         .remove-btn {
             background: #bdbdbd;
             color: #2c2c2c;
-            padding: 0.3rem 0.7rem;
+            padding: 0.2rem 0.6rem;
             font-size: 0.7rem;
             margin-left: 0.5rem;
+            border-radius: 30px;
         }
 
         .remove-btn:hover {
             background: #9e9e9e;
+            transform: none;
         }
 
         .ingredient-list {
@@ -192,11 +194,17 @@
         .suggestion-chip {
             display: inline-block;
             background: #e0ecdb;
-            padding: 0.2rem 0.6rem;
+            padding: 0.3rem 0.8rem;
             border-radius: 20px;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             margin: 0.2rem;
             cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .suggestion-chip:hover {
+            background: #c8e0c0;
+            transform: scale(0.96);
         }
 
         .recipe-card {
@@ -215,6 +223,7 @@
             justify-content: space-between;
             align-items: baseline;
             flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .recipe-cal {
@@ -255,6 +264,15 @@
             font-style: italic;
         }
 
+        .count-badge {
+            background: #4caf50;
+            color: white;
+            border-radius: 30px;
+            padding: 0.1rem 0.6rem;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+        }
+
         @media (max-width: 800px) {
             .app-grid {
                 grid-template-columns: 1fr;
@@ -275,7 +293,7 @@
 
     <div class="app-grid">
         <div class="card">
-            <h2>📦 Your groceries</h2>
+            <h2>📦 Your groceries <span id="ingredientCount" class="count-badge">0</span></h2>
             <div class="ingredient-group">
                 <input type="text" id="ingredientInput" placeholder="e.g., chicken breast, spinach, quinoa" autocomplete="off">
                 <button id="addIngredientBtn">➕ Add</button>
@@ -292,9 +310,9 @@
             <button class="find-btn" id="findRecipesBtn">✨ Find healthy recipes ✨</button>
 
             <div class="suggested-ingredients">
-                <h3>💡 Quick add popular items:</h3>
+                <h3>💡 Quick add popular items (click any):</h3>
                 <div id="suggestionChips">
-                    <span class="suggestion-chip" data-ing="chicken breast">🍗 chicken</span>
+                    <span class="suggestion-chip" data-ing="chicken breast">🍗 chicken breast</span>
                     <span class="suggestion-chip" data-ing="eggs">🥚 eggs</span>
                     <span class="suggestion-chip" data-ing="avocado">🥑 avocado</span>
                     <span class="suggestion-chip" data-ing="salmon">🐟 salmon</span>
@@ -304,12 +322,14 @@
                     <span class="suggestion-chip" data-ing="black beans">🫘 black beans</span>
                     <span class="suggestion-chip" data-ing="broccoli">🥦 broccoli</span>
                     <span class="suggestion-chip" data-ing="greek yogurt">🥄 greek yogurt</span>
+                    <span class="suggestion-chip" data-ing="rice">🍚 rice</span>
+                    <span class="suggestion-chip" data-ing="tomatoes">🍅 tomatoes</span>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h2>🥗 recipe suggestions</h2>
+            <h2>🥗 recipe suggestions <span id="resultCount" class="count-badge">0</span></h2>
             <div id="resultsArea" style="max-height: 600px; overflow-y: auto;">
                 <div class="empty-state">👉 add ingredients + set calorie limit, then click "find recipes"</div>
             </div>
@@ -445,4 +465,218 @@
         { name: "🍚 Mexican Rice", required: ["rice", "tomatoes"], optional: ["onion", "garlic"], calories: 360, instructions: "Cook rice with tomato sauce and spices." },
         { name: "🫘 Refried Beans", required: ["beans"], optional: ["onion", "garlic"], calories: 280, instructions: "Mash cooked beans with sautéed onion." },
         { name: "🌯 Veggie Burrito", required: ["tortilla", "beans", "rice"], optional: ["cheese", "salsa"], calories: 470, instructions: "Wrap beans, rice, and toppings in tortilla." },
-        { name: "🥗 Taco Salad", required: ["ground beef", "lettuce", "tomatoes"], optional: ["cheese", "salsa"], calories:
+        { name: "🥗 Taco Salad", required: ["ground beef", "lettuce", "tomatoes"], optional: ["cheese", "salsa"], calories: 430, instructions: "Brown beef, serve over lettuce with toppings." },
+        { name: "🌽 Elote (Mexican Corn)", required: ["corn", "mayo", "cheese"], optional: ["lime", "chili"], calories: 310, instructions: "Mix corn with mayo, cheese, and chili." },
+        { name: "🥑 Avocado Salsa", required: ["avocado", "tomatoes", "onion"], optional: ["lime", "cilantro"], calories: 260, instructions: "Dice all ingredients, mix with lime juice." }
+    ];
+
+    // User's ingredient list
+    let userIngredients = [];
+
+    // DOM elements
+    const ingredientInput = document.getElementById('ingredientInput');
+    const addBtn = document.getElementById('addIngredientBtn');
+    const ingredientsContainer = document.getElementById('ingredientsContainer');
+    const calorieLimitInput = document.getElementById('calorieLimitInput');
+    const findBtn = document.getElementById('findRecipesBtn');
+    const resultsArea = document.getElementById('resultsArea');
+    const ingredientCountSpan = document.getElementById('ingredientCount');
+    const resultCountSpan = document.getElementById('resultCount');
+
+    // Helper: normalize ingredient for matching
+    function normalizeIngredient(str) {
+        return str.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+    }
+
+    // Check if recipe is possible with user's ingredients
+    function recipePossible(recipe) {
+        const normalizedUser = userIngredients.map(i => normalizeIngredient(i));
+        
+        for (let required of recipe.required) {
+            const normRequired = normalizeIngredient(required);
+            let found = false;
+            
+            for (let userIng of normalizedUser) {
+                // Exact match or partial match
+                if (userIng.includes(normRequired) || normRequired.includes(userIng)) {
+                    found = true;
+                    break;
+                }
+                // Handle common variations
+                if ((normRequired === 'chicken breast' && userIng.includes('chicken')) ||
+                    (normRequired === 'bell pepper' && userIng.includes('pepper')) ||
+                    (normRequired === 'ground beef' && userIng.includes('beef')) ||
+                    (normRequired === 'canned tuna' && userIng.includes('tuna')) ||
+                    (normRequired === 'sweet potato' && userIng.includes('potato'))) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+        return true;
+    }
+
+    // Scale recipe to calorie limit
+    function scaleRecipe(recipe, limit) {
+        if (recipe.calories <= limit) {
+            return { ...recipe, adjustedCalories: recipe.calories, scale: 1 };
+        }
+        let scale = limit / recipe.calories;
+        scale = Math.max(0.5, Math.min(1, scale));
+        return { ...recipe, adjustedCalories: Math.floor(recipe.calories * scale), scale: scale };
+    }
+
+    // Render ingredient tags
+    function renderIngredients() {
+        if (userIngredients.length === 0) {
+            ingredientsContainer.innerHTML = '<span style="color:#8aa87d;">🍽️ no ingredients yet — add some food</span>';
+            ingredientCountSpan.textContent = '0';
+            return;
+        }
+        
+        ingredientsContainer.innerHTML = '';
+        userIngredients.forEach((ing, idx) => {
+            const tag = document.createElement('span');
+            tag.className = 'ingredient-tag';
+            tag.innerHTML = `${escapeHtml(ing)} <button class="remove-btn" data-idx="${idx}" style="background:#bdbdbd; color:#2c2c2c; padding:0.2rem 0.6rem; font-size:0.7rem; margin-left:0.5rem; border-radius:30px;">✖</button>`;
+            ingredientsContainer.appendChild(tag);
+        });
+        
+        ingredientCountSpan.textContent = userIngredients.length;
+        
+        // Attach remove handlers
+        document.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(btn.getAttribute('data-idx'));
+                if (!isNaN(idx)) {
+                    userIngredients.splice(idx, 1);
+                    renderIngredients();
+                }
+                e.stopPropagation();
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Add ingredient
+    function addIngredient(ingredient) {
+        const cleanIng = ingredient.trim();
+        if (cleanIng === "") return;
+        
+        // Check for duplicates (case insensitive)
+        const exists = userIngredients.some(i => i.toLowerCase() === cleanIng.toLowerCase());
+        if (!exists) {
+            userIngredients.push(cleanIng);
+            renderIngredients();
+        } else {
+            alert(`"${cleanIng}" is already in your pantry!`);
+        }
+    }
+
+    // Find and display recipes
+    function findRecipes() {
+        if (userIngredients.length === 0) {
+            resultsArea.innerHTML = '<div class="empty-state">⚠️ Please add at least one grocery item first.</div>';
+            resultCountSpan.textContent = '0';
+            return;
+        }
+        
+        const calorieLimit = parseInt(calorieLimitInput.value);
+        if (isNaN(calorieLimit) || calorieLimit < 50) {
+            resultsArea.innerHTML = '<div class="empty-state">❌ Please enter a valid calorie limit (min 50 kcal).</div>';
+            resultCountSpan.textContent = '0';
+            return;
+        }
+        
+        // Find possible recipes
+        const possible = RECIPE_DB.filter(recipe => recipePossible(recipe));
+        
+        if (possible.length === 0) {
+            resultsArea.innerHTML = `<div class="empty-state">😕 No recipes match your ingredients.<br><br>💡 Try adding: chicken, eggs, avocado, salmon, spinach, rice, beans, or tomatoes.</div>`;
+            resultCountSpan.textContent = '0';
+            return;
+        }
+        
+        // Scale recipes to calorie limit
+        const scaledRecipes = possible.map(recipe => scaleRecipe(recipe, calorieLimit));
+        const validRecipes = scaledRecipes.filter(r => r.adjustedCalories <= calorieLimit);
+        
+        if (validRecipes.length === 0) {
+            resultsArea.innerHTML = `<div class="empty-state">⚖️ Even the smallest portions exceed ${calorieLimit} kcal.<br>Try increasing your calorie limit or adding lighter ingredients.</div>`;
+            resultCountSpan.textContent = '0';
+            return;
+        }
+        
+        // Sort by calories (lowest first)
+        validRecipes.sort((a, b) => a.adjustedCalories - b.adjustedCalories);
+        
+        resultCountSpan.textContent = validRecipes.length;
+        
+        // Display recipes
+        resultsArea.innerHTML = '';
+        validRecipes.forEach(recipe => {
+            const calDisplay = recipe.adjustedCalories;
+            const scaleNote = recipe.scale < 0.99 ? ` (scaled from ${recipe.calories} kcal — use ${Math.round(recipe.scale * 100)}% portion)` : '';
+            
+            const recipeDiv = document.createElement('div');
+            recipeDiv.className = 'recipe-card';
+            recipeDiv.innerHTML = `
+                <div class="recipe-title">
+                    <span>${recipe.name} <span class="badge-fit">✓ possible</span></span>
+                    <span class="recipe-cal">🔥 ${calDisplay} kcal${scaleNote}</span>
+                </div>
+                <div class="ingredients-used">
+                    🛒 Needs: ${recipe.required.map(i => `✨${i}✨`).join(', ')}
+                    ${recipe.optional.length > 0 ? `<br>➕ Optional extras: ${recipe.optional.join(', ')}` : ''}
+                </div>
+                <div class="instructions">
+                    📖 ${recipe.instructions}
+                </div>
+            `;
+            resultsArea.appendChild(recipeDiv);
+        });
+    }
+
+    // Event listeners
+    addBtn.addEventListener('click', () => {
+        addIngredient(ingredientInput.value);
+        ingredientInput.value = '';
+        ingredientInput.focus();
+    });
+    
+    ingredientInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addIngredient(ingredientInput.value);
+            ingredientInput.value = '';
+        }
+    });
+    
+    findBtn.addEventListener('click', findRecipes);
+    
+    // Quick add chips
+    document.querySelectorAll('.suggestion-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const ingredient = chip.getAttribute('data-ing');
+            addIngredient(ingredient);
+        });
+    });
+    
+    // Load demo ingredients so app isn't empty
+    window.addEventListener('load', () => {
+        userIngredients = ['chicken breast', 'broccoli', 'rice'];
+        renderIngredients();
+        calorieLimitInput.value = '550';
+        resultsArea.innerHTML = '<div class="empty-state">✨ Ingredients ready! Click "Find healthy recipes" ✨</div>';
+    });
+</script>
+</body>
+</html>
